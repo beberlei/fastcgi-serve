@@ -25,7 +25,7 @@ Don't forget to `/etc/init.d/hhvm start`.
 ## Usage
 
 You can keep your Apache/Nginx setup with this proxy and start a webserver (defaults to `localhost:8080`)
-for a given document root (defaults to `/var/www`).
+for a given document root (defaults to current working directory).
 
     $ hhvm-serve --document-root=/var/www --listen=127.0.0.1:8080
     Listening on http://localhost:8080

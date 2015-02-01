@@ -25,7 +25,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	filename := documentRoot + r.URL.Path
 
 	_, err := os.Stat(filename)
-	fmt.Printf("%s %s\n", err, filename)
 	if !strings.HasSuffix(filename, ".php") && err == nil {
 		staticHandler.ServeHTTP(w, r)
 		return
@@ -100,7 +99,8 @@ func ParseFastCgiResponse(content string) (int, map[string]string, string, error
 
 func main() {
 
-	flag.StringVar(&documentRoot, "document-root", "/var/www", "The document root to serve files from")
+	cwd, _ := os.Getwd()
+	flag.StringVar(&documentRoot, "document-root", cwd, "The document root to serve files from")
 	flag.StringVar(&listen, "listen", "localhost:8080", "The webserver bind address to listen to.")
 
 	flag.Parse()
