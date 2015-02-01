@@ -24,9 +24,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.Path == "/" {
-		filename = documentRoot + r.URL.Path
-	} else {
 		filename = documentRoot + "/index.php"
+	} else {
+		filename = documentRoot + r.URL.Path
 	}
 
 	_, err := os.Stat(filename)
