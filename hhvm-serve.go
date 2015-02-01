@@ -16,13 +16,18 @@ var staticHandler *http.ServeMux
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	reqParams := ""
+	var filename string
 
 	if r.Method == "POST" {
 		body, _ := ioutil.ReadAll(r.Body)
 		reqParams = string(body)
 	}
 
-	filename := documentRoot + r.URL.Path
+	if r.URL.Path == "/" {
+		filename = documentRoot + r.URL.Path
+	} else {
+		filename = documentRoot + "/index.php"
+	}
 
 	_, err := os.Stat(filename)
 	if !strings.HasSuffix(filename, ".php") && err == nil {
