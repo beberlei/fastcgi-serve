@@ -113,5 +113,5 @@ func main() {
 	fmt.Printf("Press Ctrl-C to quit.\n")
 
 	http.HandleFunc("/", handler)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(listen, nil)
 }
