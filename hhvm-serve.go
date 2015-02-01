@@ -17,6 +17,7 @@ var staticHandler *http.ServeMux
 func handler(w http.ResponseWriter, r *http.Request) {
 	reqParams := ""
 	var filename string
+	var scriptName string
 
 	if r.Method == "POST" {
 		body, _ := ioutil.ReadAll(r.Body)
@@ -24,8 +25,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.Path == "/" {
+		scriptName = "/index.php"
 		filename = documentRoot + "/index.php"
 	} else {
+		scriptName = r.URL.Path
 		filename = documentRoot + r.URL.Path
 	}
 
@@ -35,12 +38,20 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if os.IsNotExist(err) {
+		scriptName = "/index.php"
+		filename = documentRoot + "/index.php"
+	}
+
 	env := make(map[string]string)
 	env["REQUEST_METHOD"] = r.Method
 	env["SCRIPT_FILENAME"] = filename
+	env["SCRIPT_NAME"] = scriptName
 	env["SERVER_SOFTWARE"] = "go / fcgiclient "
 	env["REMOTE_ADDR"] = "127.0.0.1"
 	env["SERVER_PROTOCOL"] = "HTTP/1.1"
+	env["PATH_INFO"] = r.URL.Path
+	env["DOCUMENT_ROOT"] = documentRoot
 	env["QUERY_STRING"] = r.URL.RawQuery
 
 	fcgi, err := fcgiclient.New("127.0.0.1", 9000)
