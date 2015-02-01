@@ -95,7 +95,6 @@ func ParseFastCgiResponse(content string) (int, map[string]string, string, error
 		headers[lineParts[0]] = lineParts[1]
 	}
 
-
 	return status, headers, body, nil
 }
 
