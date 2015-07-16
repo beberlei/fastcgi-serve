@@ -51,6 +51,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	env["HTTP_HOST"] = r.Host
 	env["REQUEST_URI"] = r.URL.RequestURI()
 
+        // Add all HTTP headers to env variables
+        for field, val := range r.Header {
+                header := strings.ToUpper(field)
+                header = headerNameReplacer.Replace(header)
+                env["HTTP_"+header] = strings.Join(val, ", ")
+        }
+
 	fcgi, err := fcgiclient.New("127.0.0.1", 9000)
 	if err != nil {
 		fmt.Printf("err: %v", err)
@@ -158,3 +165,5 @@ func main() {
 	http.HandleFunc("/", handler)
 	http.ListenAndServe(listen, nil)
 }
+
+var headerNameReplacer = strings.NewReplacer(" ", "_", "-", "_")
