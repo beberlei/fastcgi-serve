@@ -89,7 +89,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		defer resp.Body.Close()
 	}
 
-	if err != nil {
+	if err != nil && err != io.EOF {
 		fmt.Printf("ERROR: %s - %v\n", r.URL.Path, err)
 	}
 
@@ -104,7 +104,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
         length, err = io.Copy(w, resp.Body)
         if err != nil {
-		fmt.Printf("ERROR: %s - %v\n", r.URL.Path, err)
+		fmt.Printf("ERROR on Body Copy: %s - %v\n", r.URL.Path, err)
         }
 
 	fmt.Printf("%s \"%s %s %s\" %d %d \"%s\"\n", r.RemoteAddr, r.Method, r.URL.Path, r.Proto, resp.StatusCode, length, r.UserAgent())
