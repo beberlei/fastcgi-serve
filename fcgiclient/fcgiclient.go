@@ -331,6 +331,29 @@ func (w *streamReader) Read(p []byte) (n int, err error) {
 	return
 }
 
+func New(h string, args ...interface{}) (fcgi *FCGIClient, err error) {
+        var conn net.Conn
+        if len(args) != 1 {
+                err = errors.New("fcgi: not enough params")
+                return
+        }
+        switch args[0].(type) {
+        case int:
+                addr := h + ":" + strconv.FormatInt(int64(args[0].(int)), 10)
+                conn, err = net.Dial("tcp", addr)
+        case string:
+                addr := h + ":" + args[0].(string)
+                conn, err = net.Dial("unix", addr)
+        default:
+                err = errors.New("fcgi: we only accept int (port) or string (socket) params.")
+        }
+        fcgi = &FCGIClient{
+                rwc:       conn,
+                keepAlive: false,
+        }
+        return
+}
+
 // Do made the request and returns a io.Reader that translates the data read
 // from fcgi responder out of fcgi packet before returning it.
 func (c *FCGIClient) Do(p map[string]string, req io.Reader) (r io.Reader, err error) {
