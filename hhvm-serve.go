@@ -48,6 +48,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	env["PATH_INFO"] = r.URL.Path
 	env["DOCUMENT_ROOT"] = documentRoot
 	env["QUERY_STRING"] = r.URL.RawQuery
+	env["HTTP_HOST"] = r.Host
+	env["REQUEST_URI"] = r.URL.RequestURI()
 
 	fcgi, err := fcgiclient.New("127.0.0.1", 9000)
 	if err != nil {
