@@ -1,10 +1,10 @@
 package main
 
-import "github.com/beberlei/hhvm-serve/fcgiclient"
+import "github.com/LionsAd/hhvm-serve/fcgiclient"
 import "errors"
 import "net/http"
+import "io"
 import "fmt"
-import "io/ioutil"
 import "flag"
 import "os"
 import "strings"
@@ -15,14 +15,9 @@ var listen string
 var staticHandler *http.ServeMux
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	reqParams := ""
 	var filename string
 	var scriptName string
-
-	if r.Method == "POST" {
-		body, _ := ioutil.ReadAll(r.Body)
-		reqParams = string(body)
-	}
+	var length int64
 
 	if r.URL.Path == "/" {
 		scriptName = "/index.php"
@@ -59,21 +54,51 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("err: %v", err)
 	}
 
-	content, _, err := fcgi.Request(env, reqParams)
+        var resp *http.Response
+        contentLength, _ := strconv.Atoi(r.Header.Get("Content-Length"))
+        switch r.Method {
+        case "HEAD":
+		resp, err = fcgi.Head(env)
+        case "GET":
+		resp, err = fcgi.Get(env)
+        case "OPTIONS":
+		resp, err = fcgi.Options(env)
+        case "POST":
+		resp, err = fcgi.Post(env, r.Header.Get("Content-Type"), r.Body, contentLength)
+        case "PUT":
+		resp, err = fcgi.Put(env, r.Header.Get("Content-Type"), r.Body, contentLength)
+        case "PATCH":
+		resp, err = fcgi.Patch(env, r.Header.Get("Content-Type"), r.Body, contentLength)
+        case "DELETE":
+		resp, err = fcgi.Delete(env, r.Header.Get("Content-Type"), r.Body, contentLength)
+        default:
+		fmt.Printf("ERROR: %s - Bad method\n", r.URL.Path)
+		return
+        }
+
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
 	if err != nil {
-		fmt.Printf("ERROR: %s - %v", r.URL.Path, err)
+		fmt.Printf("ERROR: %s - %v\n", r.URL.Path, err)
 	}
 
-	statusCode, headers, body, err := ParseFastCgiResponse(fmt.Sprintf("%s", content))
-
-	w.WriteHeader(statusCode)
-	for header, value := range headers {
-		w.Header().Set(header, value)
+        // Write the response header
+	for key, vals := range resp.Header {
+		for _, val := range vals {
+			w.Header().Add(key, val)
+		}
 	}
-	fmt.Fprintf(w, "%s", body)
 
-	fmt.Printf("%s \"%s %s %s\" %d %d \"%s\"\n", r.RemoteAddr, r.Method, r.URL.Path, r.Proto, statusCode, len(content), r.UserAgent())
+	w.WriteHeader(resp.StatusCode)
+
+        length, err = io.Copy(w, resp.Body)
+        if err != nil {
+		fmt.Printf("ERROR: %s - %v\n", r.URL.Path, err)
+        }
+
+	fmt.Printf("%s \"%s %s %s\" %d %d \"%s\"\n", r.RemoteAddr, r.Method, r.URL.Path, r.Proto, resp.StatusCode, length, r.UserAgent())
 }
 
 func ParseFastCgiResponse(content string) (int, map[string]string, string, error) {
