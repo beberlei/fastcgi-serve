@@ -9,6 +9,7 @@ import "flag"
 import "os"
 import "strings"
 import "strconv"
+import "path/filepath"
 
 var documentRoot string
 var listen string
@@ -154,6 +155,10 @@ func main() {
 	flag.StringVar(&listen, "listen", "localhost:8080", "The webserver bind address to listen to.")
 
 	flag.Parse()
+  
+	if !filepath.IsAbs(documentRoot) {
+		documentRoot, _ = filepath.Abs(documentRoot)
+	}
 
 	staticHandler = http.NewServeMux()
 	staticHandler.Handle("/", http.FileServer(http.Dir(documentRoot)))
