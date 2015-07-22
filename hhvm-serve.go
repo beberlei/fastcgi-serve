@@ -19,24 +19,32 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	var filename string
 	var scriptName string
 	var length int64
+	var directories []string
+	
+	scriptName = r.URL.Path
+	filename = documentRoot + r.URL.Path
 
-	if r.URL.Path == "/" {
-		scriptName = "/index.php"
-		filename = documentRoot + "/index.php"
-	} else {
-		scriptName = r.URL.Path
-		filename = documentRoot + r.URL.Path
-	}
-
-	_, err := os.Stat(filename)
-	if !strings.HasSuffix(filename, ".php") && err == nil {
+	if fileExists(filename) {
+		if !strings.HasSuffix(filename, ".php")  {
+			//serve static file
+			staticHandler.ServeHTTP(w, r)
+			return
+		}
+	} else if dirExists(filename) && !fileExists(filename + "/index.php") {
+		//serve directory content
 		staticHandler.ServeHTTP(w, r)
 		return
-	}
-
-	if os.IsNotExist(err) {
-		scriptName = "/index.php"
-		filename = documentRoot + "/index.php"
+	} else {
+		//try to find index.php
+		directories = strings.Split(r.URL.Path, "/")
+		for i := len(directories); i > 0; i-- {
+			indexFile := documentRoot + "/" + strings.Join(directories[0:i], "/") + "/index.php"
+			if fileExists(indexFile) {
+				filename = indexFile
+				scriptName = "/" + strings.Join(directories[0:i], "/") + "/index.php"
+				break
+			}
+		}
 	}
 
 	env := make(map[string]string)
@@ -52,28 +60,28 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	env["HTTP_HOST"] = r.Host
 	env["REQUEST_URI"] = r.URL.RequestURI()
 
-        // Add all HTTP headers to env variables
-        for field, val := range r.Header {
-                header := strings.ToUpper(field)
-                header = headerNameReplacer.Replace(header)
-                env["HTTP_"+header] = strings.Join(val, ", ")
-        }
+	// Add all HTTP headers to env variables
+	for field, val := range r.Header {
+		header := strings.ToUpper(field)
+		header = headerNameReplacer.Replace(header)
+		env["HTTP_"+header] = strings.Join(val, ", ")
+	}
 
 	fcgi, err := fcgiclient.New("127.0.0.1", 9000)
 	if err != nil {
 		fmt.Printf("err: %v", err)
 	}
 
-        var resp *http.Response
-        contentLength, _ := strconv.Atoi(r.Header.Get("Content-Length"))
-        switch r.Method {
-        case "HEAD":
+	var resp *http.Response
+	contentLength, _ := strconv.Atoi(r.Header.Get("Content-Length"))
+	switch r.Method {
+	case "HEAD":
 		resp, err = fcgi.Head(env)
-        case "GET":
+	case "GET":
 		resp, err = fcgi.Get(env)
-        case "OPTIONS":
+	case "OPTIONS":
 		resp, err = fcgi.Options(env)
-        case "POST":
+	case "POST":
 		resp, err = fcgi.Post(env, r.Header.Get("Content-Type"), r.Body, contentLength)
         case "PUT":
 		resp, err = fcgi.Put(env, r.Header.Get("Content-Type"), r.Body, contentLength)
@@ -103,10 +111,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(resp.StatusCode)
 
-        length, err = io.Copy(w, resp.Body)
-        if err != nil {
+	length, err = io.Copy(w, resp.Body)
+	if err != nil {
 		fmt.Printf("ERROR on Body Copy: %s - %v\n", r.URL.Path, err)
-        }
+	}
 
 	fmt.Printf("%s \"%s %s %s\" %d %d \"%s\"\n", r.RemoteAddr, r.Method, r.URL.Path, r.Proto, resp.StatusCode, length, r.UserAgent())
 }
@@ -146,6 +154,16 @@ func ParseFastCgiResponse(content string) (int, map[string]string, string, error
 	}
 
 	return status, headers, body, nil
+}
+
+func fileExists(filename string) (bool) {
+	fileInfo, err := os.Stat(filename)
+	return err == nil && !fileInfo.IsDir();
+}
+
+func dirExists(dirname string) (bool) {
+	fileInfo, err := os.Stat(dirname)
+	return err == nil && fileInfo.IsDir();
 }
 
 func main() {
