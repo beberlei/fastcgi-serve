@@ -1,6 +1,6 @@
 package main
 
-import "github.com/LionsAd/hhvm-serve/fcgiclient"
+import "github.com/mholt/caddy/middleware/fastcgi"
 import "errors"
 import "net/http"
 import "io"
@@ -67,7 +67,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		env["HTTP_"+header] = strings.Join(val, ", ")
 	}
 
-	fcgi, err := fcgiclient.New("127.0.0.1", 9000)
+	fcgi, err := NewFCGIClient("127.0.0.1", 9000)
 	if err != nil {
 		fmt.Printf("err: %v", err)
 	}
@@ -117,6 +117,24 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Printf("%s \"%s %s %s\" %d %d \"%s\"\n", r.RemoteAddr, r.Method, r.URL.Path, r.Proto, resp.StatusCode, length, r.UserAgent())
+}
+
+func NewFCGIClient(h string, args ...interface{}) (fcgi *fastcgi.FCGIClient, err error) {
+	if len(args) != 1 {
+		err = errors.New("fcgi: not enough params")
+		return
+	}
+	switch args[0].(type) {
+	case int:
+		addr := h + ":" + strconv.FormatInt(int64(args[0].(int)), 10)
+		fcgi, err = fastcgi.Dial("tcp", addr)
+	case string:
+		addr := h + ":" + args[0].(string)
+		fcgi, err = fastcgi.Dial("unix", addr)
+	default:
+		err = errors.New("fcgi: we only accept int (port) or string (socket) params.")
+	}
+	return
 }
 
 func ParseFastCgiResponse(content string) (int, map[string]string, string, error) {
