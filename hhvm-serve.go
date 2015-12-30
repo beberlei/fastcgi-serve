@@ -13,6 +13,8 @@ import "strconv"
 var documentRoot string
 var listen string
 var staticHandler *http.ServeMux
+var serverPort int
+var serverIp string
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	reqParams := ""
@@ -54,7 +56,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	env["DOCUMENT_ROOT"] = documentRoot
 	env["QUERY_STRING"] = r.URL.RawQuery
 
-	fcgi, err := fcgiclient.New("127.0.0.1", 9000)
+	fcgi, err := fcgiclient.New(serverIp, serverPort)
 	if err != nil {
 		fmt.Printf("err: %v", err)
 	}
@@ -118,6 +120,8 @@ func main() {
 	cwd, _ := os.Getwd()
 	flag.StringVar(&documentRoot, "document-root", cwd, "The document root to serve files from")
 	flag.StringVar(&listen, "listen", "localhost:8080", "The webserver bind address to listen to.")
+	flag.StringVar(&serverIp, "server", "127.0.0.1", "The FastCGI Server to listen to")
+	flag.IntVar(&serverPort, "server-port", 9000, "The FastCGI Port to listen to")
 
 	flag.Parse()
 
