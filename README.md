@@ -29,7 +29,7 @@ Don't forget to run either `/etc/init.d/php-fpm start` or `/etc/init.d/hhvm star
 You can keep your Apache/Nginx setup with this proxy and start a webserver (defaults to `localhost:8080`)
 for a given document root (defaults to current working directory).
 
-    $ hhvm-serve --document-root=/var/www --listen=127.0.0.1:8080
+    $ fastcgi-serve --document-root=/var/www --listen=127.0.0.1:8080
     Listening on http://localhost:8080
     Document root is /var/www
     Press Ctrl-C to quit.
