@@ -86,7 +86,7 @@ func (h *header) init(recType uint8, reqId uint16, contentLength int) {
 
 type record struct {
 	h   header
-	buf [maxWrite + maxPad]byte
+	buf []byte
 }
 
 func (rec *record) read(r io.Reader) (err error) {
@@ -97,6 +97,10 @@ func (rec *record) read(r io.Reader) (err error) {
 		return errors.New("fcgi: invalid header version")
 	}
 	n := int(rec.h.ContentLength) + int(rec.h.PaddingLength)
+	if n > maxWrite + maxPad {
+		return errors.New("fcgi: response is too long")
+	}
+	rec.buf = make([]byte, n)
 	if _, err = io.ReadFull(r, rec.buf[:n]); err != nil {
 		return err
 	}
@@ -169,8 +173,21 @@ func (this *FCGIClient) writeEndRequest(reqId uint16, appStatus int, protocolSta
 }
 
 func (this *FCGIClient) writePairs(recType uint8, reqId uint16, pairs map[string]string) error {
-	w := newWriter(this, recType, reqId)
 	b := make([]byte, 8)
+
+	writterBufSize := 0
+	for k, v := range pairs {
+		kLen := len(k)
+		vLen := len(v)
+
+		n := encodeSize(b, uint32(kLen))
+		n += encodeSize(b[n:], uint32(vLen))
+
+		writterBufSize += (n + kLen + vLen);
+	}
+
+	w := newWriter(this, recType, reqId, writterBufSize)
+
 	for k, v := range pairs {
 		n := encodeSize(b, uint32(len(k)))
 		n += encodeSize(b[n:], uint32(len(v)))
@@ -236,9 +253,9 @@ func (w *bufWriter) Close() error {
 	return w.closer.Close()
 }
 
-func newWriter(c *FCGIClient, recType uint8, reqId uint16) *bufWriter {
+func newWriter(c *FCGIClient, recType uint8, reqId uint16, bufSize int) *bufWriter {
 	s := &streamWriter{c: c, recType: recType, reqId: reqId}
-	w := bufio.NewWriterSize(s, maxWrite)
+	w := bufio.NewWriterSize(s, bufSize)
 	return &bufWriter{s, w}
 }
 
